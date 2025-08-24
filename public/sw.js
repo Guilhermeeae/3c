@@ -3,7 +3,7 @@ self.addEventListener('push', function(event) {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Nova Notificação', {
       body: data.body || 'Você recebeu uma notificação!',
-      icon: '/icon.png' // Opcional: adicione um ícone se quiser
+      icon: '/icon.png' // Adicione esse arquivo se quiser ícone
     })
   );
 });
