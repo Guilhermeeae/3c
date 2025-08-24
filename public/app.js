@@ -14,7 +14,7 @@ subscribeBtn.addEventListener('click', async () => {
       }
 
       // Pegue a VAPID public key do backend
-      const vapidPublicKey = await fetch('/vapidPublicKey').then(r => r.text());
+      const vapidPublicKey = (await fetch('/vapidPublicKey').then(r => r.text())).trim();
       const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
 
       const subscription = await registration.pushManager.subscribe({
@@ -42,7 +42,8 @@ subscribeBtn.addEventListener('click', async () => {
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
-    .replace(/\-/g, '+').replace(/_/g, '/');
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
