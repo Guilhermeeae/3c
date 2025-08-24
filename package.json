@@ -1,7 +1,6 @@
 {
   "name": "notifi3c",
   "version": "1.0.0",
-  "description": "Site de notificações push via navegador",
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js"
