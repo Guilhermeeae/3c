@@ -7,7 +7,6 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-
 const dbName = "notifi3c";
 const collectionName = "push";
 
@@ -16,7 +15,6 @@ async function saveSubscription(subscription) {
     await client.connect();
     const db = client.db(dbName);
     const collection = db.collection(collectionName);
-    // Upsert para evitar duplicidade
     await collection.updateOne(
       { endpoint: subscription.endpoint },
       { $set: subscription },
