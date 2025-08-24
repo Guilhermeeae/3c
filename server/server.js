@@ -8,14 +8,13 @@ const { saveSubscription, getAllSubscriptions, countSubscriptions } = require('.
 const app = express();
 const PORT = 3000;
 
-// Configuração VAPID
+// VAPID keys sempre no backend!
 const vapidKeys = {
-  publicKey: fs.readFileSync(path.join(__dirname, '../vapid/public_key.txt')).toString(),
-  privateKey: fs.readFileSync(path.join(__dirname, '../vapid/private_key.txt')).toString(),
+  publicKey: fs.readFileSync(path.join(__dirname, '../vapid/public_key.txt')).toString().trim(),
+  privateKey: fs.readFileSync(path.join(__dirname, '../vapid/private_key.txt')).toString().trim(),
 };
-
 webpush.setVapidDetails(
-  'mailto:contato@sosfirst.site',
+  'mailto:seuemail@dominio.com',
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
