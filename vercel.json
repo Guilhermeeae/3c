@@ -19,8 +19,38 @@
     { "src": "/app.js", "dest": "public/app.js" },
     { "src": "/style.css", "dest": "public/style.css" },
     { "src": "/icon.png", "dest": "public/icon.png" },
+    { "src": "/manifest.json", "dest": "public/manifest.json" },
+    { "src": "/icon-192x192.png", "dest": "public/icon-192x192.png" },
+    { "src": "/icon-256x256.png", "dest": "public/icon-256x256.png" },
+    { "src": "/icon-384x384.png", "dest": "public/icon-384x384.png" },
+    { "src": "/icon-512x512.png", "dest": "public/icon-512x512.png" },
+    { "src": "/icon-152x152.png", "dest": "public/icon-152x152.png" },
+    { "src": "/icon-167x167.png", "dest": "public/icon-167x167.png" },
+    { "src": "/icon-180x180.png", "dest": "public/icon-180x180.png" },
+    { "src": "/splash.png", "dest": "public/splash.png" },
+    { "src": "/screenshot1.png", "dest": "public/screenshot1.png" },
     { "src": "/", "dest": "public/index.html" },
     { "src": "/index.html", "dest": "public/index.html" },
     { "src": "/(.*)", "dest": "public/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
   ]
 }
