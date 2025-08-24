@@ -19,7 +19,7 @@
     { "src": "/vapidPublicKey", "dest": "server/server.js" },
     { "src": "/subscribe", "dest": "server/server.js" },
     { "src": "/sendNotification", "dest": "server/server.js" },
-    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/manifest.json", "dest": "public/manifest.json" },
     { "src": "/sw.js", "dest": "public/sw.js" },
     { "src": "/app.js", "dest": "public/app.js" },
     { "src": "/style.css", "dest": "public/style.css" },
@@ -39,7 +39,7 @@
   ],
   "headers": [
     {
-      "source": "/manifest.json",
+      "source": "public/manifest.json",
       "headers": [
         {
           "key": "Content-Type",
