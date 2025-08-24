@@ -8,6 +8,10 @@
     {
       "src": "public/*",
       "use": "@vercel/static"
+    },
+    {
+      "src": "manifest.json",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -15,11 +19,11 @@
     { "src": "/vapidPublicKey", "dest": "server/server.js" },
     { "src": "/subscribe", "dest": "server/server.js" },
     { "src": "/sendNotification", "dest": "server/server.js" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
     { "src": "/sw.js", "dest": "public/sw.js" },
     { "src": "/app.js", "dest": "public/app.js" },
     { "src": "/style.css", "dest": "public/style.css" },
     { "src": "/icon.png", "dest": "public/icon.png" },
-    { "src": "/manifest.json", "dest": "public/manifest.json" },
     { "src": "/icon-192x192.png", "dest": "public/icon-192x192.png" },
     { "src": "/icon-256x256.png", "dest": "public/icon-256x256.png" },
     { "src": "/icon-384x384.png", "dest": "public/icon-384x384.png" },
@@ -40,6 +44,10 @@
         {
           "key": "Content-Type",
           "value": "application/manifest+json"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     },
