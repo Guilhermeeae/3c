@@ -1,3 +1,29 @@
-body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-button { padding: 10px 20px; font-size: 1.2em; cursor: pointer; }
-#status { margin-top: 20px; color: green; }
+/* Custom styles that complement Tailwind CSS */
+#status.success {
+    color: #059669; /* Tailwind's green-600 */
+}
+
+#status.error {
+    color: #dc2626; /* Tailwind's red-600 */
+}
+
+/* Add smooth transitions for status messages */
+#status {
+    transition: all 0.3s ease;
+}
+
+/* Custom focus styles for better accessibility */
+button:focus {
+    outline: 2px solid #2563eb; /* Tailwind's blue-600 */
+    outline-offset: 2px;
+}
+
+/* Optional: Add any animations or transitions not easily achievable with Tailwind */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
