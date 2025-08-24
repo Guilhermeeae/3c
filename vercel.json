@@ -6,7 +6,7 @@
       "use": "@vercel/node"
     },
     {
-      "src": "public/**/*",
+      "src": "public/*",
       "use": "@vercel/static"
     }
   ],
@@ -15,8 +15,12 @@
     { "src": "/vapidPublicKey", "dest": "server/server.js" },
     { "src": "/subscribe", "dest": "server/server.js" },
     { "src": "/sendNotification", "dest": "server/server.js" },
-
+    { "src": "/sw.js", "dest": "public/sw.js" },
+    { "src": "/app.js", "dest": "public/app.js" },
+    { "src": "/style.css", "dest": "public/style.css" },
+    { "src": "/icon.png", "dest": "public/icon.png" },
     { "src": "/", "dest": "public/index.html" },
-    { "src": "/(?!.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|txt|json|webmanifest|map)$).*", "dest": "public/index.html" }
+    { "src": "/index.html", "dest": "public/index.html" },
+    { "src": "/(.*)", "dest": "public/$1" }
   ]
 }
