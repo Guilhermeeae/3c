@@ -3,7 +3,13 @@
   "builds": [
     {
       "src": "server/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "vapid/**",
+          "public/**"
+        ]
+      }
     },
     {
       "src": "public/*",
@@ -15,7 +21,14 @@
       "src": "/dashboard", 
       "dest": "server/server.js",
       "headers": {
-        "Cache-Control": "no-store, must-revalidate"
+        "Cache-Control": "no-store"
+      }
+    },
+    { 
+      "src": "/login", 
+      "dest": "server/server.js",
+      "headers": {
+        "Cache-Control": "no-store"
       }
     },
     { 
@@ -25,61 +38,15 @@
         "Cache-Control": "public, max-age=86400"
       }
     },
-    { 
-      "src": "/subscribe", 
-      "dest": "server/server.js" 
-    },
-    { 
-      "src": "/sendNotification", 
-      "dest": "server/server.js" 
-    },
-    { 
-      "src": "/login", 
-      "dest": "server/server.js",
-      "headers": {
-        "Cache-Control": "no-store, must-revalidate"
-      }
-    },
-    { 
-      "src": "/health", 
-      "dest": "server/server.js" 
-    },
-
+    { "src": "/subscribe", "dest": "server/server.js" },
+    { "src": "/sendNotification", "dest": "server/server.js" },
+    { "src": "/health", "dest": "server/server.js" },
     { 
       "src": "/sw.js", 
       "dest": "public/sw.js",
       "headers": {
-        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Cache-Control": "no-cache",
         "Service-Worker-Allowed": "/"
-      }
-    },
-    { 
-      "src": "/app.js", 
-      "dest": "public/app.js",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000"
-      }
-    },
-    { 
-      "src": "/style.css", 
-      "dest": "public/style.css",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000"
-      }
-    },
-    { 
-      "src": "/icon.png", 
-      "dest": "public/icon.png",
-      "headers": {
-        "Cache-Control": "public, max-age=31536000"
-      }
-    },
-    { 
-      "src": "/manifest.json", 
-      "dest": "public/manifest.json",
-      "headers": {
-        "Content-Type": "application/manifest+json",
-        "Cache-Control": "public, max-age=86400"
       }
     },
     { 
@@ -90,17 +57,11 @@
         "Cache-Control": "public, max-age=86400"
       }
     },
-    { 
-      "src": "/", 
-      "dest": "public/index.html" 
-    },
-    { 
-      "src": "/index.html", 
-      "dest": "public/index.html" 
-    },
-    { 
-      "src": "/(.*)", 
-      "dest": "public/$1" 
-    }
-  ]
+    { "src": "/(.*)", "dest": "public/$1" }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CURRENT_USER": "Guilhermeeae",
+    "TIMESTAMP": "2025-08-25 11:07:03"
+  }
 }
