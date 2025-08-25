@@ -31,9 +31,19 @@ app.get('/vapidPublicKey', (req, res) => {
 app.post('/subscribe', async (req, res) => {
   const subscription = req.body;
   try {
+    if (
+      !subscription ||
+      !subscription.endpoint ||
+      !subscription.keys ||
+      !subscription.keys.auth ||
+      !subscription.keys.p256dh
+    ) {
+      return res.status(400).json({ error: 'Subscription inválida.' });
+    }
     await saveSubscription(subscription);
     res.status(201).json({});
   } catch (err) {
+    console.error('Erro ao salvar subscription:', err.message);
     res.status(500).json({ error: 'Erro ao salvar subscription.' });
   }
 });
@@ -44,16 +54,21 @@ app.post('/sendNotification', async (req, res) => {
   let sent = 0, failed = 0;
   try {
     const subscriptions = await getAllSubscriptions();
+    if (!subscriptions || subscriptions.length === 0) {
+      return res.json({ sent: 0, failed: 0, message: 'Nenhuma subscription registrada.' });
+    }
     await Promise.all(subscriptions.map(async (sub) => {
       try {
         await webpush.sendNotification(sub, JSON.stringify({ title, body }));
         sent++;
       } catch (err) {
+        console.error('Erro ao enviar para subscription:', sub, err.message);
         failed++;
       }
     }));
     res.json({ sent, failed });
   } catch (err) {
+    console.error('Erro geral ao enviar notificações:', err.message);
     res.status(500).json({ error: 'Erro ao enviar notificações.' });
   }
 });
@@ -83,7 +98,6 @@ app.get('/dashboard', async (req, res) => {
             }
         }
 
-        // Mantendo a funcionalidade original do formulário de notificação
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('notifForm').onsubmit = async function(e) {
                 e.preventDefault();
@@ -96,13 +110,12 @@ app.get('/dashboard', async (req, res) => {
                 });
                 const res = await r.json();
                 document.getElementById('result').innerText =
-                    'Enviadas: ' + res.sent + ' | Falharam: ' + res.failed;
+                    'Enviadas: ' + res.sent + ' | Falharam: ' + res.failed + (res.message ? ' - ' + res.message : '');
             }
         });
     </script>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <!-- Login Form -->
     <div id="loginForm" class="container mx-auto px-4 py-8">
         <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8 mt-20">
             <div class="text-center mb-8">
@@ -110,7 +123,6 @@ app.get('/dashboard', async (req, res) => {
                 <h2 class="text-2xl font-bold text-gray-800">Dashboard Administrativo</h2>
                 <p class="text-gray-600 mt-2">Faça login para continuar</p>
             </div>
-            
             <form onsubmit="checkLogin(event)" class="space-y-4">
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
@@ -126,32 +138,26 @@ app.get('/dashboard', async (req, res) => {
             </form>
         </div>
     </div>
-
-    <!-- Dashboard Content (Initially Hidden) -->
     <div id="dashboardContent" class="hidden container mx-auto px-4 py-8">
         <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8">
             <div class="text-center mb-8">
                 <img src="/icon.png" alt="Logo 3C" class="h-16 w-auto mx-auto mb-4">
                 <h1 class="text-3xl font-bold text-gray-800">Dashboard de Notificações</h1>
             </div>
-
             <div class="bg-blue-50 rounded-lg p-4 mb-6">
                 <p class="text-lg text-gray-700">
                     Dispositivos registrados: <strong class="text-blue-600">${count}</strong>
                 </p>
             </div>
-
             <form id="notifForm" class="space-y-4">
                 <div>
                     <label for="title" class="block text-sm font-medium text-gray-700">Título da Notificação</label>
                     <input type="text" id="title" name="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
                 </div>
-                
                 <div>
                     <label for="body" class="block text-sm font-medium text-gray-700">Mensagem da Notificação</label>
                     <textarea id="body" name="body" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required></textarea>
                 </div>
-
                 <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-3 px-4 hover:bg-blue-700 transition duration-300 flex items-center justify-center">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
@@ -159,7 +165,6 @@ app.get('/dashboard', async (req, res) => {
                     Enviar Notificação
                 </button>
             </form>
-
             <div id="result" class="mt-4 p-4 rounded-lg bg-gray-50 text-center text-gray-700"></div>
         </div>
     </div>
@@ -167,6 +172,7 @@ app.get('/dashboard', async (req, res) => {
 </html>
     `);
   } catch (err) {
+    console.error('Erro ao carregar dashboard:', err.message);
     res.status(500).send('Erro ao carregar dashboard.');
   }
 });
