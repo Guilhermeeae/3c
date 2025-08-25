@@ -5,8 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
+const MemoryStore = require('memorystore')(session);
 const crypto = require('crypto');
-const MongoStore = require('connect-mongo');
 const { 
   saveSubscription, 
   getAllSubscriptions, 
@@ -16,8 +16,11 @@ const {
   getDeviceStats
 } = require('./mongodb');
 
+// Configurações do App
 const app = express();
 const PORT = process.env.PORT || 3000;
+const CURRENT_USER = process.env.CURRENT_USER || 'Guilhermeeae';
+const CURRENT_TIMESTAMP = '2025-08-25 11:11:24';
 
 // Configurar trust proxy para o Vercel
 app.set('trust proxy', 1);
@@ -67,23 +70,19 @@ app.use('/login', limiter);
 app.use('/subscribe', limiter);
 app.use('/sendNotification', limiter);
 
-// Configurar sessão com MongoDB
+// Configurar sessão com MemoryStore
 app.use(session({
+  cookie: {
+    maxAge: 86400000,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  },
+  store: new MemoryStore({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  }),
   secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || "mongodb+srv://yuri:yuri2503@notifi3c.9rbu1m2.mongodb.net/?retryWrites=true&w=majority&appName=Notifi3c",
-    ttl: 24 * 60 * 60,
-    autoRemove: 'native',
-    touchAfter: 24 * 3600
-  }),
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'lax'
-  }
+  saveUninitialized: false
 }));
 
 // Servir arquivos estáticos
@@ -120,9 +119,9 @@ const requireAuth = (req, res, next) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    timestamp: new Date().toISOString(),
+    timestamp: CURRENT_TIMESTAMP,
     version: '2.0.0',
-    currentUser: 'Guilhermeeae'
+    currentUser: CURRENT_USER
   });
 });
 
@@ -153,7 +152,7 @@ app.post('/subscribe', async (req, res) => {
       metadata: {
         userAgent,
         deviceType,
-        timestamp: new Date(),
+        timestamp: CURRENT_TIMESTAMP,
         ip: req.ip || req.connection.remoteAddress,
         headers: {
           'accept-language': req.get('Accept-Language'),
@@ -211,10 +210,9 @@ app.post('/sendNotification', requireAuth, async (req, res) => {
       icon: icon || '/icon.png',
       badge: badge || '/icon.png',
       tag: tag || 'turma-3c',
-      timestamp: Date.now()
+      timestamp: new Date(CURRENT_TIMESTAMP).getTime()
     });
 
-    // Processar notificações em lotes
     const batchSize = 50;
     for (let i = 0; i < subscriptions.length; i += batchSize) {
       const batch = subscriptions.slice(i, i + batchSize);
@@ -278,35 +276,35 @@ app.get('/login', (req, res) => {
     <!DOCTYPE html>
     <html lang="pt-br">
     <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Login - Dashboard 3C</title>
-      <script src="https://cdn.tailwindcss.com"></script>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Login - Dashboard 3C</title>
+        <script src="https://cdn.tailwindcss.com"></script>
     </head>
     <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-      <div class="container mx-auto px-4 py-8">
-        <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8 mt-20">
-          <div class="text-center mb-8">
-            <img src="/icon.png" alt="Logo 3C" class="h-20 w-auto mx-auto mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Dashboard Administrativo</h2>
-            <p class="text-gray-600 mt-2">Faça login para continuar</p>
-          </div>
-          
-          <form method="POST" class="space-y-4">
-            <div>
-              <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
-              <input type="text" id="username" name="username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8 mt-20">
+                <div class="text-center mb-8">
+                    <img src="/icon.png" alt="Logo 3C" class="h-20 w-auto mx-auto mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Dashboard Administrativo</h2>
+                    <p class="text-gray-600 mt-2">Faça login para continuar</p>
+                </div>
+                
+                <form method="POST" class="space-y-4">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
+                        <input type="text" id="username" name="username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+                        <input type="password" id="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 transition duration-300">
+                        Entrar
+                    </button>
+                </form>
             </div>
-            <div>
-              <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
-              <input type="password" id="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 transition duration-300">
-              Entrar
-            </button>
-          </form>
         </div>
-      </div>
     </body>
     </html>
   `);
@@ -333,7 +331,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Dashboard de Notificações 3C</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     </head>
     <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
         <div class="container mx-auto px-4 py-8">
@@ -341,7 +338,8 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                 <div class="text-center mb-8">
                     <img src="/icon.png" alt="Logo 3C" class="h-16 w-auto mx-auto mb-4">
                     <h1 class="text-3xl font-bold text-gray-800">Dashboard de Notificações</h1>
-                    <p class="text-sm text-gray-600 mt-2">Logado como: ${process.env.ADMIN_USER || 'admin'}</p>
+                    <p class="text-sm text-gray-600 mt-2">Logado como: ${CURRENT_USER}</p>
+                    <p class="text-xs text-gray-500">${CURRENT_TIMESTAMP}</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -359,10 +357,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                         <h3 class="text-lg font-semibold text-gray-700">Android</h3>
                         <p class="text-3xl font-bold text-purple-600">${deviceStats.android || 0}</p>
                     </div>
-                </div>
-
-                <div class="mb-8">
-                    <canvas id="deviceChart"></canvas>
                 </div>
 
                 <form id="notifForm" class="space-y-4">
@@ -394,38 +388,6 @@ app.get('/dashboard', requireAuth, async (req, res) => {
         </div>
 
         <script>
-            const ctx = document.getElementById('deviceChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['iOS', 'Android', 'Outros'],
-                    datasets: [{
-                        data: [${deviceStats.ios || 0}, ${deviceStats.android || 0}, ${deviceStats.unknown || 0}],
-                        backgroundColor: [
-                            'rgba(54, 162, 235, 0.2)',
-                            'rgba(153, 102, 255, 0.2)',
-                            'rgba(201, 203, 207, 0.2)'
-                        ],
-                        borderColor: [
-                            'rgb(54, 162, 235)',
-                            'rgb(153, 102, 255)',
-                            'rgb(201, 203, 207)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: 'bottom' },
-                        title: {
-                            display: true,
-                            text: 'Distribuição de Dispositivos'
-                        }
-                    }
-                }
-            });
-
             document.getElementById('notifForm').onsubmit = async function(e) {
                 e.preventDefault();
                 const button = this.querySelector('button');
@@ -447,7 +409,14 @@ app.get('/dashboard', requireAuth, async (req, res) => {
                     
                     const res = await r.json();
                     
+                    if (res.error) {
+                        throw new Error(res.message || 'Erro ao enviar notificações');
+                    }
+                    
                     result.innerHTML = '<div class="flex items-center justify-center space-x-4"><div class="text-green-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><p>Enviadas: <strong>' + res.sent + '</strong> | Falhas: <strong>' + res.failed + '</strong></p><p class="text-sm text-gray-500">Total: ' + res.total + '</p></div></div>';
+                    
+                    // Limpar formulário
+                    this.reset();
                 } catch (error) {
                     result.innerHTML = '<div class="text-red-600"><p>Erro ao enviar notificações</p><p class="text-sm">' + error.message + '</p></div>';
                 } finally {
@@ -481,8 +450,8 @@ function detectDeviceType(userAgent) {
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
   console.log('Ambiente:', process.env.NODE_ENV || 'development');
-  console.log('Usuário atual:', 'Guilhermeeae');
-  console.log('Data/Hora:', new Date().toISOString());
+  console.log('Usuário atual:', CURRENT_USER);
+  console.log('Data/Hora:', CURRENT_TIMESTAMP);
 });
 
 // Handle uncaught errors
