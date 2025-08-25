@@ -6,15 +6,26 @@ const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const session = require('express-session');
 const crypto = require('crypto');
-const { saveSubscription, getAllSubscriptions, countSubscriptions, deleteSubscription, getRecentSubscriptions } = require('./mongodb');
+const MongoStore = require('connect-mongo');
+const { 
+  saveSubscription, 
+  getAllSubscriptions, 
+  countSubscriptions, 
+  deleteSubscription, 
+  getRecentSubscriptions,
+  getDeviceStats
+} = require('./mongodb');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configurar trust proxy para o Vercel
+app.set('trust proxy', 1);
+
 // VAPID keys
 const vapidKeys = {
-  publicKey: fs.readFileSync(path.join(__dirname, '../vapid/public_key.txt')).toString().trim(),
-  privateKey: fs.readFileSync(path.join(__dirname, '../vapid/private_key.txt')).toString().trim(),
+  publicKey: process.env.VAPID_PUBLIC_KEY || fs.readFileSync(path.join(__dirname, '../vapid/public_key.txt')).toString().trim(),
+  privateKey: process.env.VAPID_PRIVATE_KEY || fs.readFileSync(path.join(__dirname, '../vapid/private_key.txt')).toString().trim(),
 };
 
 webpush.setVapidDetails(
@@ -43,20 +54,35 @@ app.use((req, res, next) => {
 
 // Configurar rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // limite de 100 requisições por IP
-  message: 'Muitas requisições deste IP, tente novamente mais tarde.'
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Muitas requisições deste IP, tente novamente mais tarde.',
+  skip: (req) => process.env.NODE_ENV !== 'production'
 });
 
-// Configurar sessão
+// Aplicar rate limit em rotas específicas
+app.use('/login', limiter);
+app.use('/subscribe', limiter);
+app.use('/sendNotification', limiter);
+
+// Configurar sessão com MongoDB
 app.use(session({
-  secret: crypto.randomBytes(32).toString('hex'),
+  secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   resave: false,
-  saveUninitialized: true,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI || "mongodb+srv://yuri:yuri2503@notifi3c.9rbu1m2.mongodb.net/?retryWrites=true&w=majority&appName=Notifi3c",
+    ttl: 24 * 60 * 60,
+    autoRemove: 'native',
+    touchAfter: 24 * 3600
+  }),
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
   }
 }));
 
@@ -90,12 +116,13 @@ const requireAuth = (req, res, next) => {
   }
 };
 
-// Health check
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: '2.0.0'
+    version: '2.0.0',
+    currentUser: 'Guilhermeeae'
   });
 });
 
@@ -104,61 +131,6 @@ app.get('/vapidPublicKey', (req, res) => {
   res.setHeader('Content-Type', 'text/plain');
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.send(vapidKeys.publicKey);
-});
-
-// Login page
-app.get('/login', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="pt-br">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Login - Dashboard 3C</title>
-      <script src="https://cdn.tailwindcss.com"></script>
-    </head>
-    <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-      <div class="container mx-auto px-4 py-8">
-        <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8 mt-20">
-          <div class="text-center mb-8">
-            <img src="/icon.png" alt="Logo 3C" class="h-20 w-auto mx-auto mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Dashboard Administrativo</h2>
-            <p class="text-gray-600 mt-2">Faça login para continuar</p>
-          </div>
-          
-          <form action="/login" method="POST" class="space-y-4">
-            <div>
-              <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
-              <input type="text" id="username" name="username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
-            </div>
-            <div>
-              <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
-              <input type="password" id="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
-            </div>
-            <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 transition duration-300">
-              Entrar
-            </button>
-          </form>
-        </div>
-      </div>
-    </body>
-    </html>
-  `);
-});
-
-// Process login
-app.post('/login', limiter, (req, res) => {
-  const { username, password } = req.body;
-  
-  const validUsername = process.env.ADMIN_USER || 'admin';
-  const validPassword = process.env.ADMIN_PASS || 'administrador25';
-  
-  if (username === validUsername && password === validPassword) {
-    req.session.isAuthenticated = true;
-    res.redirect('/dashboard');
-  } else {
-    res.status(401).send('Usuário ou senha incorretos');
-  }
 });
 
 // Subscribe endpoint
@@ -242,6 +214,7 @@ app.post('/sendNotification', requireAuth, async (req, res) => {
       timestamp: Date.now()
     });
 
+    // Processar notificações em lotes
     const batchSize = 50;
     for (let i = 0; i < subscriptions.length; i += batchSize) {
       const batch = subscriptions.slice(i, i + batchSize);
@@ -284,7 +257,62 @@ app.post('/sendNotification', requireAuth, async (req, res) => {
   }
 });
 
-// Dashboard page
+// Login route
+app.post('/login', limiter, (req, res) => {
+  const { username, password } = req.body;
+  
+  const validUsername = process.env.ADMIN_USER || 'admin';
+  const validPassword = process.env.ADMIN_PASS || 'administrador25';
+  
+  if (username === validUsername && password === validPassword) {
+    req.session.isAuthenticated = true;
+    res.redirect('/dashboard');
+  } else {
+    res.status(401).send('Usuário ou senha incorretos');
+  }
+});
+
+// Login page
+app.get('/login', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="pt-br">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Login - Dashboard 3C</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+      <div class="container mx-auto px-4 py-8">
+        <div class="max-w-md mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8 mt-20">
+          <div class="text-center mb-8">
+            <img src="/icon.png" alt="Logo 3C" class="h-20 w-auto mx-auto mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Dashboard Administrativo</h2>
+            <p class="text-gray-600 mt-2">Faça login para continuar</p>
+          </div>
+          
+          <form method="POST" class="space-y-4">
+            <div>
+              <label for="username" class="block text-sm font-medium text-gray-700">Usuário</label>
+              <input type="text" id="username" name="username" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+            </div>
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700">Senha</label>
+              <input type="password" id="password" name="password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-2 px-4 hover:bg-blue-700 transition duration-300">
+              Entrar
+            </button>
+          </form>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
+// Dashboard route
 app.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const [count, recentSubscriptions] = await Promise.all([
@@ -299,158 +327,137 @@ app.get('/dashboard', requireAuth, async (req, res) => {
     }, {});
 
     const html = `<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Notificações 3C</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8">
-            <div class="text-center mb-8">
-                <img src="/icon.png" alt="Logo 3C" class="h-16 w-auto mx-auto mb-4">
-                <h1 class="text-3xl font-bold text-gray-800">Dashboard de Notificações</h1>
+    <html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard de Notificações 3C</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+    <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden p-8">
+                <div class="text-center mb-8">
+                    <img src="/icon.png" alt="Logo 3C" class="h-16 w-auto mx-auto mb-4">
+                    <h1 class="text-3xl font-bold text-gray-800">Dashboard de Notificações</h1>
+                    <p class="text-sm text-gray-600 mt-2">Logado como: ${process.env.ADMIN_USER || 'admin'}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-blue-50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Total de Dispositivos</h3>
+                        <p class="text-3xl font-bold text-blue-600">${count}</p>
+                    </div>
+                    
+                    <div class="bg-green-50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-gray-700">iOS</h3>
+                        <p class="text-3xl font-bold text-green-600">${deviceStats.ios || 0}</p>
+                    </div>
+                    
+                    <div class="bg-purple-50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-gray-700">Android</h3>
+                        <p class="text-3xl font-bold text-purple-600">${deviceStats.android || 0}</p>
+                    </div>
+                </div>
+
+                <div class="mb-8">
+                    <canvas id="deviceChart"></canvas>
+                </div>
+
+                <form id="notifForm" class="space-y-4">
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Título da Notificação</label>
+                        <input type="text" id="title" name="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
+                    </div>
+                    
+                    <div>
+                        <label for="body" class="block text-sm font-medium text-gray-700">Mensagem da Notificação</label>
+                        <textarea id="body" name="body" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required></textarea>
+                    </div>
+
+                    <div>
+                        <label for="url" class="block text-sm font-medium text-gray-700">URL (opcional)</label>
+                        <input type="url" id="url" name="url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-3 px-4 hover:bg-blue-700 transition duration-300 flex items-center justify-center">
+                        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                        </svg>
+                        Enviar Notificação
+                    </button>
+                </form>
+
+                <div id="result" class="mt-4 p-4 rounded-lg bg-gray-50 text-center text-gray-700"></div>
             </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-blue-50 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Total de Dispositivos</h3>
-                    <p class="text-3xl font-bold text-blue-600">${count}</p>
-                </div>
-                
-                <div class="bg-green-50 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-700">iOS</h3>
-                    <p class="text-3xl font-bold text-green-600">${deviceStats.ios || 0}</p>
-                </div>
-                
-                <div class="bg-purple-50 rounded-lg p-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Android</h3>
-                    <p class="text-3xl font-bold text-purple-600">${deviceStats.android || 0}</p>
-                </div>
-            </div>
-
-            <div class="mb-8">
-                <canvas id="deviceChart"></canvas>
-            </div>
-
-            <form id="notifForm" class="space-y-4">
-                <div>
-                    <label for="title" class="block text-sm font-medium text-gray-700">Título da Notificação</label>
-                    <input type="text" id="title" name="title" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required>
-                </div>
-                
-                <div>
-                    <label for="body" class="block text-sm font-medium text-gray-700">Mensagem da Notificação</label>
-                    <textarea id="body" name="body" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border" required></textarea>
-                </div>
-
-                <div>
-                    <label for="url" class="block text-sm font-medium text-gray-700">URL (opcional)</label>
-                    <input type="url" id="url" name="url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
-                </div>
-
-                <button type="submit" class="w-full bg-blue-600 text-white rounded-lg py-3 px-4 hover:bg-blue-700 transition duration-300 flex items-center justify-center">
-                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    Enviar Notificação
-                </button>
-            </form>
-
-            <div id="result" class="mt-4 p-4 rounded-lg bg-gray-50 text-center text-gray-700"></div>
         </div>
-    </div>
 
-    <script>
-        const ctx = document.getElementById('deviceChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: ['iOS', 'Android', 'Outros'],
-                datasets: [{
-                    data: [${deviceStats.ios || 0}, ${deviceStats.android || 0}, ${deviceStats.unknown || 0}],
-                    backgroundColor: [
-                        'rgba(54, 162, 235, 0.2)',
-                        'rgba(153, 102, 255, 0.2)',
-                        'rgba(201, 203, 207, 0.2)'
-                    ],
-                    borderColor: [
-                        'rgb(54, 162, 235)',
-                        'rgb(153, 102, 255)',
-                        'rgb(201, 203, 207)'
-                    ],
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' },
-                    title: {
-                        display: true,
-                        text: 'Distribuição de Dispositivos'
+        <script>
+            const ctx = document.getElementById('deviceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['iOS', 'Android', 'Outros'],
+                    datasets: [{
+                        data: [${deviceStats.ios || 0}, ${deviceStats.android || 0}, ${deviceStats.unknown || 0}],
+                        backgroundColor: [
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(153, 102, 255, 0.2)',
+                            'rgba(201, 203, 207, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgb(54, 162, 235)',
+                            'rgb(153, 102, 255)',
+                            'rgb(201, 203, 207)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        title: {
+                            display: true,
+                            text: 'Distribuição de Dispositivos'
+                        }
                     }
                 }
-            }
-        });
+            });
 
-        document.getElementById('notifForm').onsubmit = async function(e) {
-            e.preventDefault();
-            const button = this.querySelector('button');
-            const result = document.getElementById('result');
-            
-            button.disabled = true;
-            button.innerHTML = \`<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Enviando...\`;
-            
-            try {
-                const r = await fetch('/sendNotification', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        title: document.getElementById('title').value,
-                        body: document.getElementById('body').value,
-                        url: document.getElementById('url').value
-                    })
-                });
+            document.getElementById('notifForm').onsubmit = async function(e) {
+                e.preventDefault();
+                const button = this.querySelector('button');
+                const result = document.getElementById('result');
                 
-                const res = await r.json();
+                button.disabled = true;
+                button.innerHTML = '<svg class="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Enviando...';
                 
-                result.innerHTML = \`
-                    <div class="flex items-center justify-center space-x-4">
-                        <div class="text-green-600">
-                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <p>Enviadas: <strong>\${res.sent}</strong> | Falhas: <strong>\${res.failed}</strong></p>
-                            <p class="text-sm text-gray-500">Total: \${res.total}</p>
-                        </div>
-                    </div>
-                \`;
-            } catch (error) {
-                result.innerHTML = \`
-                    <div class="text-red-600">
-                        <p>Erro ao enviar notificações</p>
-                        <p class="text-sm">\${error.message}</p>
-                    </div>
-                \`;
-            } finally {
-                button.disabled = false;
-                button.innerHTML = \`
-                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
-                    </svg>
-                    Enviar Notificação
-                \`;
-            }
-        };
-    </script>
-</body>
-</html>`;
+                try {
+                    const r = await fetch('/sendNotification', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            title: document.getElementById('title').value,
+                            body: document.getElementById('body').value,
+                            url: document.getElementById('url').value
+                        })
+                    });
+                    
+                    const res = await r.json();
+                    
+                    result.innerHTML = '<div class="flex items-center justify-center space-x-4"><div class="text-green-600"><svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg></div><div><p>Enviadas: <strong>' + res.sent + '</strong> | Falhas: <strong>' + res.failed + '</strong></p><p class="text-sm text-gray-500">Total: ' + res.total + '</p></div></div>';
+                } catch (error) {
+                    result.innerHTML = '<div class="text-red-600"><p>Erro ao enviar notificações</p><p class="text-sm">' + error.message + '</p></div>';
+                } finally {
+                    button.disabled = false;
+                    button.innerHTML = '<svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>Enviar Notificação';
+                }
+            };
+        </script>
+    </body>
+    </html>`;
 
     res.send(html);
   } catch (err) {
@@ -474,6 +481,8 @@ function detectDeviceType(userAgent) {
 app.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
   console.log('Ambiente:', process.env.NODE_ENV || 'development');
+  console.log('Usuário atual:', 'Guilhermeeae');
+  console.log('Data/Hora:', new Date().toISOString());
 });
 
 // Handle uncaught errors
@@ -487,3 +496,5 @@ process.on('uncaughtException', (err) => {
     process.exit(1);
   }
 });
+
+module.exports = app;
