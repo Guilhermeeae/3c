@@ -1,29 +1,295 @@
-/* Custom styles that complement Tailwind CSS */
+/* Custom styles que complementam Tailwind CSS */
+
+/* Reset e base para iOS */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Específico para iOS */
+.ios-device {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Melhorias para PWA */
+@media (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    /* Esconder a barra de status no iOS */
+    .container {
+        padding-top: 0;
+    }
+}
+
+/* Status messages com cores */
 #status.success {
     color: #059669; /* Tailwind's green-600 */
+    background-color: #ecfdf5; /* green-50 */
+    border: 1px solid #10b981; /* green-500 */
+    padding: 0.5rem;
+    border-radius: 0.375rem;
 }
 
 #status.error {
     color: #dc2626; /* Tailwind's red-600 */
+    background-color: #fef2f2; /* red-50 */
+    border: 1px solid #ef4444; /* red-500 */
+    padding: 0.5rem;
+    border-radius: 0.375rem;
 }
 
-/* Add smooth transitions for status messages */
+#status.warning {
+    color: #d97706; /* Tailwind's amber-600 */
+    background-color: #fffbeb; /* amber-50 */
+    border: 1px solid #f59e0b; /* amber-500 */
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+}
+
+#status.info {
+    color: #2563eb; /* Tailwind's blue-600 */
+    background-color: #eff6ff; /* blue-50 */
+    border: 1px solid #3b82f6; /* blue-500 */
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+}
+
+/* Transições suaves para status */
 #status {
     transition: all 0.3s ease;
+    min-height: 1.25rem;
 }
 
-/* Custom focus styles for better accessibility */
+/* Botão com estados visuais melhores */
 button:focus {
-    outline: 2px solid #2563eb; /* Tailwind's blue-600 */
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
 }
 
-/* Optional: Add any animations or transitions not easily achievable with Tailwind */
+button:active {
+    transform: translateY(1px);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* Loading spinner personalizado */
+.loading-spinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #2563eb;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Animações */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from { 
+        opacity: 0; 
+        transform: translateY(10px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
 }
 
 .fade-in {
-    animation: fadeIn 0.3s ease-in;
+    animation: fadeIn 0.5s ease-in;
 }
+
+.slide-in {
+    animation: slideInFromTop 0.4s ease-out;
+}
+
+.pulse-animation {
+    animation: pulse 2s infinite;
+}
+
+/* Responsividade específica para dispositivos */
+
+/* iPhone SE, 5s, 5c, 5 */
+@media only screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) {
+    .container {
+        padding: 1rem;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+}
+
+/* iPhone 12 mini, 13 mini */
+@media only screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) {
+    .container {
+        padding-top: 2rem;
+    }
+}
+
+/* iPhone 14, 15 */
+@media only screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) {
+    body {
+        font-size: 16px;
+    }
+}
+
+/* iPhone 14 Pro Max, 15 Pro Max */
+@media only screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) {
+    .max-w-md {
+        max-width: 32rem;
+    }
+}
+
+/* Tablets */
+@media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+    .container {
+        padding: 2rem;
+    }
+    
+    .max-w-md {
+        max-width: 40rem;
+    }
+}
+
+/* Android específico */
+@media screen and (-webkit-device-pixel-ratio: 2) and (orientation: portrait) {
+    /* Melhorar performance em Android */
+    * {
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+    }
+}
+
+/* Modo escuro (quando suportado pelo sistema) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+    }
+    
+    /* Note: Como estamos usando Tailwind, o modo escuro seria melhor implementado 
+       através das classes dark: do Tailwind, mas aqui está um fallback básico */
+}
+
+/* Melhorias para acessibilidade */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+    button {
+        border: 2px solid;
+    }
+    
+    .bg-blue-600 {
+        background-color: #1d4ed8 !important;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    button {
+        min-height: 44px; /* Apple's minimum touch target size */
+        min-width: 44px;
+    }
+    
+    .hover\:scale-105:hover {
+        transform: none; /* Disable hover effects on touch devices */
+    }
+    
+    .hover\:bg-blue-700:hover {
+        background-color: #2563eb; /* Keep original color on touch */
+    }
+}
+
+/* Print styles */
+@media print {
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    
+    button, .shadow-lg {
+        display: none !important;
+    }
+}
+
+/* Específico para instalação PWA */
+.install-prompt {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+.install-prompt button {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Otimizações de performance */
+.gpu-accelerated {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+}
+
+/* Container para conteúdo crítico */
+.critical-content {
+    contain: layout style paint;
+    }
