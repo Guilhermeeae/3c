@@ -11,22 +11,96 @@
     }
   ],
   "routes": [
-    { "src": "/dashboard", "dest": "server/server.js" },
-    { "src": "/vapidPublicKey", "dest": "server/server.js" },
-    { "src": "/subscribe", "dest": "server/server.js" },
-    { "src": "/sendNotification", "dest": "server/server.js" },
-    { "src": "/login", "dest": "server/server.js" },
-    { "src": "/health", "dest": "server/server.js" },
+    { 
+      "src": "/dashboard", 
+      "dest": "server/server.js",
+      "headers": {
+        "Cache-Control": "no-store, must-revalidate"
+      }
+    },
+    { 
+      "src": "/vapidPublicKey", 
+      "dest": "server/server.js",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    { 
+      "src": "/subscribe", 
+      "dest": "server/server.js" 
+    },
+    { 
+      "src": "/sendNotification", 
+      "dest": "server/server.js" 
+    },
+    { 
+      "src": "/login", 
+      "dest": "server/server.js",
+      "headers": {
+        "Cache-Control": "no-store, must-revalidate"
+      }
+    },
+    { 
+      "src": "/health", 
+      "dest": "server/server.js" 
+    },
 
-    { "src": "/sw.js", "dest": "public/sw.js" },
-    { "src": "/app.js", "dest": "public/app.js" },
-    { "src": "/style.css", "dest": "public/style.css" },
-    { "src": "/icon.png", "dest": "public/icon.png" },
-    { "src": "/manifest.json", "dest": "public/manifest.json" },
-    { "src": "/browserconfig.xml", "dest": "public/browserconfig.xml" },
-
-    { "src": "/", "dest": "public/index.html" },
-    { "src": "/index.html", "dest": "public/index.html" },
-    { "src": "/(.*)", "dest": "public/$1" }
+    { 
+      "src": "/sw.js", 
+      "dest": "public/sw.js",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Service-Worker-Allowed": "/"
+      }
+    },
+    { 
+      "src": "/app.js", 
+      "dest": "public/app.js",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    { 
+      "src": "/style.css", 
+      "dest": "public/style.css",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    { 
+      "src": "/icon.png", 
+      "dest": "public/icon.png",
+      "headers": {
+        "Cache-Control": "public, max-age=31536000"
+      }
+    },
+    { 
+      "src": "/manifest.json", 
+      "dest": "public/manifest.json",
+      "headers": {
+        "Content-Type": "application/manifest+json",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    { 
+      "src": "/browserconfig.xml", 
+      "dest": "public/browserconfig.xml",
+      "headers": {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    { 
+      "src": "/", 
+      "dest": "public/index.html" 
+    },
+    { 
+      "src": "/index.html", 
+      "dest": "public/index.html" 
+    },
+    { 
+      "src": "/(.*)", 
+      "dest": "public/$1" 
+    }
   ]
 }
