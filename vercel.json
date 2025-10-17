@@ -6,6 +6,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "server/initUsers.js",
+      "use": "@vercel/node"
+    },
+    {
       "src": "public/*",
       "use": "@vercel/static"
     }
@@ -15,6 +19,7 @@
     { "src": "/vapidPublicKey", "dest": "server/server.js" },
     { "src": "/subscribe", "dest": "server/server.js" },
     { "src": "/sendNotification", "dest": "server/server.js" },
+    { "src": "/initUsers", "dest": "server/initUsers.js" },
     { "src": "/sw.js", "dest": "public/sw.js" },
     { "src": "/app.js", "dest": "public/app.js" },
     { "src": "/style.css", "dest": "public/style.css" },
