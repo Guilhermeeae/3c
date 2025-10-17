@@ -8,13 +8,13 @@ const client = new MongoClient(uri, {
   }
 });
 const dbName = "notifi3c";
-const collectionName = "push";
 
+// === SUBSCRIPTIONS ===
 async function saveSubscription(subscription) {
   try {
     await client.connect();
     const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    const collection = db.collection("push");
     await collection.updateOne(
       { endpoint: subscription.endpoint },
       { $set: subscription },
@@ -29,7 +29,7 @@ async function getAllSubscriptions() {
   try {
     await client.connect();
     const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    const collection = db.collection("push");
     const subs = await collection.find({}).toArray();
     return subs;
   } finally {
@@ -41,7 +41,7 @@ async function countSubscriptions() {
   try {
     await client.connect();
     const db = client.db(dbName);
-    const collection = db.collection(collectionName);
+    const collection = db.collection("push");
     const count = await collection.countDocuments();
     return count;
   } finally {
@@ -49,4 +49,78 @@ async function countSubscriptions() {
   }
 }
 
-module.exports = { saveSubscription, getAllSubscriptions, countSubscriptions };
+// === NOTIFICAÇÕES ===
+async function saveNotification(notification) {
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("notificacoes");
+    await collection.insertOne(notification);
+  } finally {
+    await client.close();
+  }
+}
+
+async function getAllNotifications() {
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("notificacoes");
+    const notifications = await collection.find({}).sort({ timestamp: -1 }).toArray();
+    return notifications;
+  } finally {
+    await client.close();
+  }
+}
+
+// === USUÁRIOS ===
+async function getUserByUsername(username) {
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("login");
+    const user = await collection.findOne({ username: username });
+    return user;
+  } finally {
+    await client.close();
+  }
+}
+
+// === INICIALIZAÇÃO DOS USUÁRIOS (executar uma vez) ===
+async function initializeUsers() {
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection("login");
+    
+    const users = [
+      { username: "Yuri", password: "123" },
+      { username: "Freitas", password: "456" },
+      { username: "Izadora", password: "789" }
+    ];
+    
+    for (const user of users) {
+      await collection.updateOne(
+        { username: user.username },
+        { $set: user },
+        { upsert: true }
+      );
+    }
+    
+    console.log("Usuários inicializados com sucesso!");
+  } catch (err) {
+    console.error("Erro ao inicializar usuários:", err);
+  } finally {
+    await client.close();
+  }
+}
+
+module.exports = { 
+  saveSubscription, 
+  getAllSubscriptions, 
+  countSubscriptions,
+  saveNotification,
+  getAllNotifications,
+  getUserByUsername,
+  initializeUsers
+};
